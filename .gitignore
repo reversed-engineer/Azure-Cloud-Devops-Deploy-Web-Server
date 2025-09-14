@@ -1,0 +1,9 @@
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Local settings
+*.log
+*.tmp
