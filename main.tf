@@ -21,7 +21,7 @@ resource "azurerm_virtual_network" "vnet" {
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
   address_space       = [var.vnet_cidr]
-  tags = { env = "dev" }
+  tags                = { env = "dev" }
 }
 
 resource "azurerm_subnet" "subnet" {
@@ -36,8 +36,9 @@ resource "azurerm_network_security_group" "nsg" {
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
 
+  # 1) Allow inbound within the VNet
   security_rule {
-    name                       = "Allow-VNet"
+    name                       = "Allow-VNet-In"
     priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
@@ -48,8 +49,9 @@ resource "azurerm_network_security_group" "nsg" {
     destination_port_range     = "*"
   }
 
+  # 2) Allow HTTP from Azure Load Balancer to backends
   security_rule {
-    name                       = "Allow-AzureLoadBalancer-HTTP"
+    name                       = "Allow-ALB-HTTP-In"
     priority                   = 110
     direction                  = "Inbound"
     access                     = "Allow"
@@ -60,9 +62,23 @@ resource "azurerm_network_security_group" "nsg" {
     destination_port_range     = "80"
   }
 
+  # 3) Explicit outbound allow within the VNet (per feedback)
   security_rule {
-    name                       = "Deny-Internet"
-    priority                   = 200
+    name                       = "Allow-VNet-Out"
+    priority                   = 120
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_address_prefix = "VirtualNetwork"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+  }
+
+  # 4) Lowest-priority deny from Internet (inbound)
+  security_rule {
+    name                       = "Deny-Internet-In"
+    priority                   = 4096
     direction                  = "Inbound"
     access                     = "Deny"
     protocol                   = "*"
